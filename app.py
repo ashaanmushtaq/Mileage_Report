@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import openpyxl
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side, GradientFill
 from openpyxl.utils import get_column_letter
 import io
 import re
@@ -11,11 +11,20 @@ from datetime import datetime
 # DEFAULT RURAL VEHICLE MASTER LIST
 # ------------------------------------------------------------------------------
 DEFAULT_RURAL_LIST = [
-    "GAB-4046", "SA-6766", "STR-6637", "MC-5", "TT-06", "GTD-694", 
-    "GAS-1694", "BN-3932", "DGK-1763", "TT-11", "GAU-8135", "GAJ-19-47", 
-    "SAA-2946", "ST-663", "GAJ-3943", "TT-05", "OKA-2192", "SAA-7988",
+    # R-Series (All 27 vehicles)
     "R-1", "R-2", "R-3", "R-4", "R-5", "R-6", "R-7", "R-8", "R-9", "R-10",
-    "RIC-1", "RIC-2", "RIC-3", "RIC-4", "RIC-5", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"
+    "R-11", "R-12", "R-13", "R-14", "R-15", "R-16", "R-17", "R-18", "R-19",
+    "R-21", "R-23", "R-24", "R-32", "R-33", "R-35", "R-40", "R-41",
+    
+    # RIC-Series (All 17 vehicles)
+    "RIC-20", "RIC-22", "RIC-25", "RIC-26", "RIC-27", "RIC-28", "RIC-29",
+    "RIC-30", "RIC-31", "RIC-34", "RIC-36", "RIC-37", "RIC-38", "RIC-39",
+    "RIC-42", "RIC-43", "RIC-44",
+    
+    # Other Rural Vehicles
+    "GAB-4046", "SA-6766", "STR-6637", "MC-5", "TT-06", "GTD-694",
+    "GAS-1694", "BN-3932", "DGK-1763", "TT-11", "GAU-8135", "GAJ-19-47",
+    "SAA-2946", "ST-663", "GAJ-3943", "TT-05", "OKA-2192", "SAA-7988"
 ]
 
 st.set_page_config(
@@ -30,35 +39,54 @@ st.set_page_config(
 st.markdown("""
     <style>
     .receipt-card {
-        background-color: #FFFFFF;
-        border: 2px dashed #1F4E79;
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        margin-bottom: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        margin-bottom: 25px;
+        color: white;
     }
     .receipt-header {
-        font-family: 'Courier New', Courier, monospace;
-        font-size: 26px;
-        font-weight: bold;
-        color: #1F4E79;
+        font-family: 'Segoe UI', sans-serif;
+        font-size: 28px;
+        font-weight: 700;
         text-align: center;
-        letter-spacing: 2px;
+        letter-spacing: 1px;
+        color: white;
         margin-bottom: 5px;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
     }
     .receipt-sub {
-        font-family: 'Calibri', sans-serif;
+        font-family: 'Segoe UI', sans-serif;
         text-align: center;
-        color: #555;
-        font-size: 14px;
-        margin-bottom: 15px;
+        color: rgba(255,255,255,0.9);
+        font-size: 15px;
+        margin-bottom: 5px;
+        font-weight: 300;
+    }
+    .receipt-sub b {
+        color: #FFD700;
+        font-weight: 600;
+    }
+    .stButton>button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 25px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    .stButton>button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
     }
     </style>
 """, unsafe_allow_html=True)
 
 st.markdown("""
 <div class="receipt-card">
-    <div class="receipt-header">🧾 MILEAGE EXECUTIVE AUDIT DASHBOARD</div>
+    <div class="receipt-header">📊 MILEAGE EXECUTIVE AUDIT DASHBOARD</div>
     <div class="receipt-sub">Developed by: <b>Muhammad Ashaan</b> | Bellanix Tech</div>
 </div>
 """, unsafe_allow_html=True)
@@ -112,16 +140,13 @@ def is_rural_vehicle(reg_str, rural_set, numeric_rural_set, normalized_rural_set
     return False
 
 def extract_file_date(df_raw):
-    # Search top 5 rows for dates inside strings like [07/28/2026 - 07/28/2026] or standalone dates
     for r in range(min(5, len(df_raw))):
         row_str = " ".join(df_raw.iloc[r].dropna().astype(str).tolist())
-        # Try bracketed date range pattern
         if '[' in row_str and ']' in row_str:
             p1, p2 = row_str.find('['), row_str.find(']')
             extracted = row_str[p1+1:p2].split('-')[0].strip()
             if len(extracted) >= 6:
                 return extracted
-        # Try standard MM/DD/YYYY or YYYY-MM-DD pattern
         match = re.search(r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b', row_str)
         if match:
             return match.group(0)
@@ -141,6 +166,120 @@ def process_mileage_df(df_raw):
             header_row_idx, col_reg_idx, col_period_idx = r_idx, c_reg, c_per
             break
     return header_row_idx, col_reg_idx, col_period_idx
+
+# ------------------------------------------------------------------------------
+# ENHANCED EXCEL STYLING FUNCTION
+# ------------------------------------------------------------------------------
+def apply_professional_styling(ws, headers, num_cols, urban_count, rural_count, total_count, meta_date, selected_city):
+    """Apply professional corporate styling to the Excel worksheet"""
+    
+    # Color Palette - Corporate Blue Theme
+    COLORS = {
+        'primary_dark': '1C3D5A',      # Deep navy
+        'primary': '2A5C8A',            # Corporate blue
+        'primary_light': '4A8CC4',      # Light blue
+        'accent_gold': 'C5A45D',        # Gold for highlights
+        'accent_green': '2E7D32',       # Forest green for rural
+        'accent_red': 'C62828',         # Deep red for warnings
+        'header_bg': '1A365D',          # Very dark blue for headers
+        'alt_row': 'F7FAFC',            # Very light gray
+        'white': 'FFFFFF',
+        'border': 'CBD5E0',             # Soft gray border
+        'text_dark': '2D3748',
+        'text_light': 'FFFFFF'
+    }
+    
+    # Fonts
+    header_font = Font(name='Segoe UI', size=12, bold=True, color=COLORS['text_light'])
+    title_font = Font(name='Segoe UI', size=16, bold=True, color=COLORS['text_light'])
+    metric_font = Font(name='Segoe UI', size=11, bold=True, color=COLORS['primary_dark'])
+    
+    # Alignments
+    center_align = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    left_align = Alignment(horizontal='left', vertical='center', wrap_text=True)
+    
+    # Borders
+    thin_border = Border(
+        left=Side(style='thin', color=COLORS['border']),
+        right=Side(style='thin', color=COLORS['border']),
+        top=Side(style='thin', color=COLORS['border']),
+        bottom=Side(style='thin', color=COLORS['border'])
+    )
+    
+    # Row 1: Main Title (Merged)
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=num_cols)
+    title_cell = ws.cell(row=1, column=1, value=f"🏢 {selected_city} VEHICLE MILEAGE EXECUTIVE REPORT")
+    title_cell.font = Font(name='Segoe UI', size=18, bold=True, color=COLORS['text_light'])
+    title_cell.fill = PatternFill(start_color=COLORS['header_bg'], end_color=COLORS['header_bg'], fill_type='solid')
+    title_cell.alignment = center_align
+    ws.row_dimensions[1].height = 45
+    
+    # Row 2: Subtitle with date and report ID
+    ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=num_cols)
+    subtitle_cell = ws.cell(row=2, column=1, value=f"📅 Report Date: {meta_date} | 📊 Audit ID: MILE-{datetime.now().strftime('%Y%m%d')}")
+    subtitle_cell.font = Font(name='Segoe UI', size=10, color=COLORS['primary_light'])
+    subtitle_cell.fill = PatternFill(start_color='EBF4FC', end_color='EBF4FC', fill_type='solid')
+    subtitle_cell.alignment = center_align
+    ws.row_dimensions[2].height = 28
+    
+    # Row 3-4: Metrics Dashboard (4 columns)
+    metrics_data = [
+        ('Total Fleet (20-24h)', total_count, COLORS['primary'], '🚗'),
+        ('Urban Fleet', urban_count, COLORS['primary_light'], '🏙️'),
+        ('Rural Fleet', rural_count, COLORS['accent_green'], '🌾'),
+        ('Completion Rate', f"{round((total_count/max(1,total_count+urban_count+rural_count))*100)}%", COLORS['accent_gold'], '📈')
+    ]
+    
+    col_width = num_cols // 4
+    for i, (label, value, color, icon) in enumerate(metrics_data):
+        start_col = i * col_width + 1
+        end_col = (i + 1) * col_width
+        ws.merge_cells(start_row=3, start_column=start_col, end_row=4, end_column=end_col)
+        
+        cell = ws.cell(row=3, column=start_col, value=f"{icon} {label}")
+        cell.font = Font(name='Segoe UI', size=9, bold=True, color=COLORS['text_dark'])
+        cell.alignment = center_align
+        cell.fill = PatternFill(start_color='F7FAFC', end_color='F7FAFC', fill_type='solid')
+        
+        value_cell = ws.cell(row=4, column=start_col, value=str(value))
+        value_cell.font = Font(name='Segoe UI', size=16, bold=True, color=color)
+        value_cell.alignment = center_align
+        value_cell.fill = PatternFill(start_color='F7FAFC', end_color='F7FAFC', fill_type='solid')
+    
+    ws.row_dimensions[3].height = 28
+    ws.row_dimensions[4].height = 32
+    
+    # Row 5: Separator
+    ws.merge_cells(start_row=5, start_column=1, end_row=5, end_column=num_cols)
+    sep_cell = ws.cell(row=5, column=1, value="")
+    sep_cell.fill = PatternFill(start_color=COLORS['primary'], end_color=COLORS['primary'], fill_type='solid')
+    ws.row_dimensions[5].height = 8
+    
+    # Row 6: Column Headers
+    header_row = 6
+    ws.row_dimensions[header_row].height = 32
+    for c_idx, h_text in enumerate(headers, 1):
+        cell = ws.cell(row=header_row, column=c_idx, value=h_text)
+        cell.font = Font(name='Segoe UI', size=10, bold=True, color=COLORS['text_light'])
+        cell.fill = PatternFill(start_color=COLORS['primary'], end_color=COLORS['primary'], fill_type='solid')
+        cell.alignment = center_align
+        cell.border = thin_border
+    
+    # Row 7: Filter info
+    ws.merge_cells(start_row=7, start_column=1, end_row=7, end_column=num_cols)
+    filter_cell = ws.cell(row=7, column=1, value="🔍 Filter: Vehicles with mileage between 20-24 hours | Developed by Muhammad Ashaan")
+    filter_cell.font = Font(name='Segoe UI', size=9, italic=True, color=COLORS['primary_dark'])
+    filter_cell.fill = PatternFill(start_color='EBF4FC', end_color='EBF4FC', fill_type='solid')
+    filter_cell.alignment = center_align
+    ws.row_dimensions[7].height = 24
+    
+    # Return styling configuration for data rows
+    return {
+        'thin_border': thin_border,
+        'center_align': center_align,
+        'header_font': header_font,
+        'COLORS': COLORS
+    }
 
 # ------------------------------------------------------------------------------
 # CITY SELECTION & FILE UPLOAD SECTION
@@ -212,7 +351,7 @@ if current_file:
                             if p_reg and p_reg not in ['-', 'NAN', 'NONE']:
                                 prev_vehicles.add(normalize_reg(p_reg))
 
-            # Extract Actual Date from Today's Mileage File Data
+            # Extract Actual Date
             meta_date = extract_file_date(df_current_raw)
 
             raw_headers = df_current_raw.iloc[h_idx].astype(str).str.replace('\xa0', '', regex=False).str.strip().tolist()
@@ -271,91 +410,42 @@ if current_file:
                 st.warning(f"⚠️ **Same-Day Duplicates ({len(duplicate_regs)}):** {', '.join(duplicate_regs)}")
 
             # ------------------------------------------------------------------
-            # EXCEL REPORT BUILDER (DYNAMIC CITY HEADER)
+            # ENHANCED EXCEL REPORT BUILDER
             # ------------------------------------------------------------------
             wb = openpyxl.Workbook()
             ws_out = wb.active
             ws_out.title = "Executive Report"
-            ws_out.views.sheetView[0].showGridLines = True
-
-            center_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            
+            # Apply professional styling
             num_cols = len(headers)
-            half_cols = max(2, num_cols // 2)
-
-            # 1. Main Title Banner (Dynamic City Integration)
-            ws_out.merge_cells(start_row=1, start_column=1, end_row=1, end_column=num_cols)
-            title_text = f"{selected_city} VEHICLE MILEAGE EXECUTIVE REPORT"
-            title_cell = ws_out.cell(row=1, column=1, value=title_text)
-            title_cell.font = Font(name="Calibri", size=16, bold=True, color="FFFFFF")
-            title_cell.fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
-            title_cell.alignment = center_align
-            ws_out.row_dimensions[1].height = 36
-
-            # 2. Merged Centralized Metadata Block
-            ws_out.merge_cells(start_row=3, start_column=1, end_row=3, end_column=half_cols)
-            r3_left = ws_out.cell(row=3, column=1, value=f"Report Date:  {meta_date}")
-            r3_left.font = Font(bold=True)
-            r3_left.alignment = center_align
-
-            ws_out.merge_cells(start_row=3, start_column=half_cols+1, end_row=3, end_column=num_cols)
-            r3_right = ws_out.cell(row=3, column=half_cols+1, value=f"Total Fleet (20-24h):  {total_valid_vehicles}")
-            r3_right.font = Font(bold=True, color="1F4E79")
-            r3_right.alignment = center_align
-
-            ws_out.merge_cells(start_row=4, start_column=1, end_row=4, end_column=half_cols)
-            r4_left = ws_out.cell(row=4, column=1, value="Developed by:  Muhammad Ashaan")
-            r4_left.font = Font(bold=True, color="1F4E79")
-            r4_left.alignment = center_align
-
-            ws_out.merge_cells(start_row=4, start_column=half_cols+1, end_row=4, end_column=num_cols)
-            r4_right = ws_out.cell(row=4, column=half_cols+1, value=f"Urban Fleet Count:  {len(urban_rows)}")
-            r4_right.font = Font(bold=True, color="154360")
-            r4_right.alignment = center_align
-
-            ws_out.merge_cells(start_row=5, start_column=1, end_row=5, end_column=half_cols)
-            r5_left = ws_out.cell(row=5, column=1, value="Filtered Hours:  20–24 Hours")
-            r5_left.font = Font(bold=True)
-            r5_left.alignment = center_align
-
-            ws_out.merge_cells(start_row=5, start_column=half_cols+1, end_row=5, end_column=num_cols)
-            r5_right = ws_out.cell(row=5, column=half_cols+1, value=f"Rural Fleet Count:  {len(rural_rows)}")
-            r5_right.font = Font(bold=True, color="145A32")
-            r5_right.alignment = center_align
-
-            for r in range(3, 6):
-                ws_out.row_dimensions[r].height = 22
-
-            # 3. Table Column Headers
-            header_row_out = 7
-            ws_out.row_dimensions[header_row_out].height = 28
-            for c_idx, h_text in enumerate(headers, 1):
-                cell = ws_out.cell(row=header_row_out, column=c_idx, value=h_text)
-                cell.font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
-                cell.fill = PatternFill(start_color="2980B9", end_color="2980B9", fill_type="solid")
-                cell.alignment = center_align
-
+            style_config = apply_professional_styling(
+                ws_out, headers, num_cols, 
+                len(urban_rows), len(rural_rows), 
+                total_valid_vehicles, meta_date, selected_city
+            )
+            
+            thin_border = style_config['thin_border']
+            center_align = style_config['center_align']
+            COLORS = style_config['COLORS']
+            
+            # Data rows start from row 8
             curr_r = 8
             sno_tracker = 1
             
-            thin_border = Border(
-                left=Side(style='thin', color='D9D9D9'),
-                right=Side(style='thin', color='D9D9D9'),
-                top=Side(style='thin', color='D9D9D9'),
-                bottom=Side(style='thin', color='D9D9D9')
-            )
-            fill_alt = PatternFill(start_color="F2F7FA", end_color="F2F7FA", fill_type="solid")
-            fill_dup = PatternFill(start_color="FFE169", end_color="FFE169", fill_type="solid")
-            fill_repeat = PatternFill(start_color="FFCC80", end_color="FFCC80", fill_type="solid")
-
+            # Fill patterns
+            fill_alt = PatternFill(start_color=COLORS['alt_row'], end_color=COLORS['alt_row'], fill_type='solid')
+            fill_dup = PatternFill(start_color='FFF3E0', end_color='FFF3E0', fill_type='solid')  # Light orange
+            fill_repeat = PatternFill(start_color='FFE5E5', end_color='FFE5E5', fill_type='solid')  # Light red
+            
             actual_reg_col = c_reg_idx + (0 if has_sno else 1)
 
             # --- URBAN FLEET SECTION ---
             ws_out.merge_cells(start_row=curr_r, start_column=1, end_row=curr_r, end_column=num_cols)
-            u_sec = ws_out.cell(row=curr_r, column=1, value=f"URBAN FLEET VEHICLES ({len(urban_rows)})")
-            u_sec.font = Font(bold=True, color="FFFFFF", size=11)
-            u_sec.fill = PatternFill(start_color="154360", end_color="154360", fill_type="solid")
+            u_sec = ws_out.cell(row=curr_r, column=1, value=f"🏙️ URBAN FLEET VEHICLES ({len(urban_rows)})")
+            u_sec.font = Font(name='Segoe UI', size=12, bold=True, color=COLORS['text_light'])
+            u_sec.fill = PatternFill(start_color=COLORS['primary'], end_color=COLORS['primary'], fill_type='solid')
             u_sec.alignment = center_align
-            ws_out.row_dimensions[curr_r].height = 26
+            ws_out.row_dimensions[curr_r].height = 30
             curr_r += 1
 
             for r_data in urban_rows:
@@ -366,33 +456,35 @@ if current_file:
                 r_data[0] = sno_tracker
                 sno_tracker += 1
                 
-                ws_out.row_dimensions[curr_r].height = 20
+                ws_out.row_dimensions[curr_r].height = 22
                 for c_idx, val in enumerate(r_data, 1):
                     val_clean = str(val).replace('\xa0', '').strip() if pd.notna(val) else ''
                     cell = ws_out.cell(row=curr_r, column=c_idx, value=val_clean if c_idx > 1 else r_data[0])
                     cell.alignment = center_align
                     cell.border = thin_border
-                    if is_even:
+                    cell.font = Font(name='Segoe UI', size=10, color=COLORS['text_dark'])
+                    
+                    if is_even and c_idx > 0:
                         cell.fill = fill_alt
                     
                     if c_idx == (actual_reg_col + 1):
                         if reg_clean in repeated_vehicles:
                             cell.fill = fill_repeat
-                            cell.font = Font(bold=True, color="B7410E")
+                            cell.font = Font(name='Segoe UI', size=10, bold=True, color=COLORS['accent_red'])
                         elif reg_clean in duplicate_regs:
                             cell.fill = fill_dup
-                            cell.font = Font(bold=True, color="9C5700")
+                            cell.font = Font(name='Segoe UI', size=10, bold=True, color='E65100')
                 curr_r += 1
 
             curr_r += 1
 
             # --- RURAL FLEET SECTION ---
             ws_out.merge_cells(start_row=curr_r, start_column=1, end_row=curr_r, end_column=num_cols)
-            r_sec = ws_out.cell(row=curr_r, column=1, value=f"RURAL FLEET VEHICLES ({len(rural_rows)})")
-            r_sec.font = Font(bold=True, color="FFFFFF", size=11)
-            r_sec.fill = PatternFill(start_color="145A32", end_color="145A32", fill_type="solid")
+            r_sec = ws_out.cell(row=curr_r, column=1, value=f"🌾 RURAL FLEET VEHICLES ({len(rural_rows)})")
+            r_sec.font = Font(name='Segoe UI', size=12, bold=True, color=COLORS['text_light'])
+            r_sec.fill = PatternFill(start_color=COLORS['accent_green'], end_color=COLORS['accent_green'], fill_type='solid')
             r_sec.alignment = center_align
-            ws_out.row_dimensions[curr_r].height = 26
+            ws_out.row_dimensions[curr_r].height = 30
             curr_r += 1
 
             for r_data in rural_rows:
@@ -403,29 +495,40 @@ if current_file:
                 r_data[0] = sno_tracker
                 sno_tracker += 1
                 
-                ws_out.row_dimensions[curr_r].height = 20
+                ws_out.row_dimensions[curr_r].height = 22
                 for c_idx, val in enumerate(r_data, 1):
                     val_clean = str(val).replace('\xa0', '').strip() if pd.notna(val) else ''
                     cell = ws_out.cell(row=curr_r, column=c_idx, value=val_clean if c_idx > 1 else r_data[0])
                     cell.alignment = center_align
                     cell.border = thin_border
-                    if is_even:
+                    cell.font = Font(name='Segoe UI', size=10, color=COLORS['text_dark'])
+                    
+                    if is_even and c_idx > 0:
                         cell.fill = fill_alt
                     
                     if c_idx == (actual_reg_col + 1):
                         if reg_clean in repeated_vehicles:
                             cell.fill = fill_repeat
-                            cell.font = Font(bold=True, color="B7410E")
+                            cell.font = Font(name='Segoe UI', size=10, bold=True, color=COLORS['accent_red'])
                         elif reg_clean in duplicate_regs:
                             cell.fill = fill_dup
-                            cell.font = Font(bold=True, color="9C5700")
+                            cell.font = Font(name='Segoe UI', size=10, bold=True, color='E65100')
                 curr_r += 1
 
             # Auto Column Widths
             for col in ws_out.columns:
-                max_len = max(len(str(cell.value or '')) for cell in col)
+                max_len = max(len(str(cell.value or '')) for cell in col if cell.value)
                 col_letter = get_column_letter(col[0].column)
-                ws_out.column_dimensions[col_letter].width = max(max_len + 5, 14)
+                ws_out.column_dimensions[col_letter].width = max(max_len + 5, 15)
+
+            # Add footer with branding
+            footer_row = curr_r + 1
+            ws_out.merge_cells(start_row=footer_row, start_column=1, end_row=footer_row, end_column=num_cols)
+            footer_cell = ws_out.cell(row=footer_row, column=1, value="📋 Report generated by Bellanix Tech - Mileage Executive Audit System")
+            footer_cell.font = Font(name='Segoe UI', size=9, italic=True, color=COLORS['primary_light'])
+            footer_cell.fill = PatternFill(start_color='EBF4FC', end_color='EBF4FC', fill_type='solid')
+            footer_cell.alignment = center_align
+            ws_out.row_dimensions[footer_row].height = 24
 
             # Download Output
             output_buffer = io.BytesIO()
