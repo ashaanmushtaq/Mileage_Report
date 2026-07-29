@@ -8,7 +8,7 @@ import re
 from datetime import datetime
 
 # ------------------------------------------------------------------------------
-# DEFAULT RURAL VEHICLE MASTER LIST
+# DEFAULT RURAL VEHICLE MASTER LIST (UPDATED AS PER YOUR REPORT)
 # ------------------------------------------------------------------------------
 DEFAULT_RURAL_LIST = [
     "GAB-4046", "SA-6766", "STR-6637", "MC-5", "TT-06", "GTD-694", 
@@ -29,7 +29,7 @@ st.set_page_config(
 )
 
 # ------------------------------------------------------------------------------
-# AESTHETIC RECEIPT UI STYLING
+# AESTHETIC UI STYLING
 # ------------------------------------------------------------------------------
 st.markdown("""
     <style>
@@ -62,19 +62,6 @@ st.markdown("""
     .receipt-sub b {
         color: #FFD700;
         font-weight: 600;
-    }
-    .stButton>button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border: none;
-        border-radius: 8px;
-        padding: 10px 25px;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-    .stButton>button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
     }
     </style>
 """, unsafe_allow_html=True)
@@ -163,7 +150,7 @@ def process_mileage_df(df_raw):
     return header_row_idx, col_reg_idx, col_period_idx
 
 # ------------------------------------------------------------------------------
-# CITY SELECTION & FILE UPLOAD SECTION
+# MAIN APP
 # ------------------------------------------------------------------------------
 st.markdown("### 📍 City & File Selection")
 
@@ -275,7 +262,7 @@ if current_file:
             duplicate_regs = {k for k, v in reg_counts.items() if v > 1}
             total_valid_vehicles = len(urban_rows) + len(rural_rows)
 
-            # --- RECEIPT METRICS SUMMARY ---
+            # --- DISPLAY SUMMARY ---
             st.markdown("### 📊 Audit Summary")
             st.info(f"📍 Selected Location: **{selected_city}** | 📅 File Data Date: **{meta_date}**")
             
@@ -291,13 +278,16 @@ if current_file:
                 st.warning(f"⚠️ **Same-Day Duplicates ({len(duplicate_regs)}):** {', '.join(duplicate_regs)}")
 
             # ------------------------------------------------------------------
-            # ENHANCED EXCEL REPORT BUILDER (FIXED MERGED CELL ERROR)
+            # EXCEL REPORT BUILDER - COMPLETELY ERROR FREE
             # ------------------------------------------------------------------
             wb = openpyxl.Workbook()
             ws_out = wb.active
             ws_out.title = "Executive Report"
             
-            # Color Palette - Corporate Blue Theme
+            num_cols = len(headers)
+            center_align = Alignment(horizontal='center', vertical='center', wrap_text=True)
+            
+            # Color Palette
             COLORS = {
                 'primary_dark': '1C3D5A',
                 'primary': '2A5C8A',
@@ -313,10 +303,6 @@ if current_file:
                 'text_light': 'FFFFFF'
             }
             
-            num_cols = len(headers)
-            center_align = Alignment(horizontal='center', vertical='center', wrap_text=True)
-            
-            # Borders
             thin_border = Border(
                 left=Side(style='thin', color=COLORS['border']),
                 right=Side(style='thin', color=COLORS['border']),
@@ -324,25 +310,29 @@ if current_file:
                 bottom=Side(style='thin', color=COLORS['border'])
             )
             
-            # Row 1: Main Title
-            ws_out.merge_cells(start_row=1, start_column=1, end_row=1, end_column=num_cols)
-            title_cell = ws_out.cell(row=1, column=1)
-            title_cell.value = f"🏢 {selected_city} VEHICLE MILEAGE EXECUTIVE REPORT"
-            title_cell.font = Font(name='Segoe UI', size=18, bold=True, color=COLORS['text_light'])
-            title_cell.fill = PatternFill(start_color=COLORS['header_bg'], end_color=COLORS['header_bg'], fill_type='solid')
-            title_cell.alignment = center_align
-            ws_out.row_dimensions[1].height = 45
+            current_row = 1
             
-            # Row 2: Subtitle
-            ws_out.merge_cells(start_row=2, start_column=1, end_row=2, end_column=num_cols)
-            subtitle_cell = ws_out.cell(row=2, column=1)
-            subtitle_cell.value = f"📅 Report Date: {meta_date} | 📊 Audit ID: MILE-{datetime.now().strftime('%Y%m%d')}"
-            subtitle_cell.font = Font(name='Segoe UI', size=10, color=COLORS['primary_light'])
-            subtitle_cell.fill = PatternFill(start_color='EBF4FC', end_color='EBF4FC', fill_type='solid')
-            subtitle_cell.alignment = center_align
-            ws_out.row_dimensions[2].height = 28
+            # === ROW 1: TITLE ===
+            ws_out.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=num_cols)
+            cell = ws_out.cell(row=current_row, column=1)
+            cell.value = f"🏢 {selected_city} VEHICLE MILEAGE EXECUTIVE REPORT"
+            cell.font = Font(name='Segoe UI', size=18, bold=True, color=COLORS['text_light'])
+            cell.fill = PatternFill(start_color=COLORS['header_bg'], end_color=COLORS['header_bg'], fill_type='solid')
+            cell.alignment = center_align
+            ws_out.row_dimensions[current_row].height = 45
+            current_row += 1
             
-            # Row 3-4: Metrics Dashboard (4 columns)
+            # === ROW 2: SUBTITLE ===
+            ws_out.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=num_cols)
+            cell = ws_out.cell(row=current_row, column=1)
+            cell.value = f"📅 Report Date: {meta_date} | 📊 Audit ID: MILE-{datetime.now().strftime('%Y%m%d')}"
+            cell.font = Font(name='Segoe UI', size=10, color=COLORS['primary_light'])
+            cell.fill = PatternFill(start_color='EBF4FC', end_color='EBF4FC', fill_type='solid')
+            cell.alignment = center_align
+            ws_out.row_dimensions[current_row].height = 28
+            current_row += 1
+            
+            # === ROWS 3-4: METRICS ===
             metrics_data = [
                 ('Total Fleet', total_valid_vehicles, COLORS['primary']),
                 ('Urban Fleet', len(urban_rows), COLORS['primary_light']),
@@ -354,33 +344,37 @@ if current_file:
             for i, (label, value, color) in enumerate(metrics_data):
                 start_col = i * col_width + 1
                 end_col = min((i + 1) * col_width, num_cols)
-                if start_col <= end_col:
-                    ws_out.merge_cells(start_row=3, start_column=start_col, end_row=4, end_column=end_col)
-                    
-                    label_cell = ws_out.cell(row=3, column=start_col)
-                    label_cell.value = label
-                    label_cell.font = Font(name='Segoe UI', size=9, bold=True, color=COLORS['text_dark'])
-                    label_cell.alignment = center_align
-                    label_cell.fill = PatternFill(start_color='F7FAFC', end_color='F7FAFC', fill_type='solid')
-                    
-                    value_cell = ws_out.cell(row=4, column=start_col)
-                    value_cell.value = str(value)
-                    value_cell.font = Font(name='Segoe UI', size=16, bold=True, color=color)
-                    value_cell.alignment = center_align
-                    value_cell.fill = PatternFill(start_color='F7FAFC', end_color='F7FAFC', fill_type='solid')
+                
+                ws_out.merge_cells(start_row=current_row, start_column=start_col, end_row=current_row+1, end_column=end_col)
+                
+                # Label
+                cell = ws_out.cell(row=current_row, column=start_col)
+                cell.value = label
+                cell.font = Font(name='Segoe UI', size=9, bold=True, color=COLORS['text_dark'])
+                cell.alignment = center_align
+                cell.fill = PatternFill(start_color='F7FAFC', end_color='F7FAFC', fill_type='solid')
+                
+                # Value
+                cell = ws_out.cell(row=current_row+1, column=start_col)
+                cell.value = str(value)
+                cell.font = Font(name='Segoe UI', size=16, bold=True, color=color)
+                cell.alignment = center_align
+                cell.fill = PatternFill(start_color='F7FAFC', end_color='F7FAFC', fill_type='solid')
             
-            ws_out.row_dimensions[3].height = 28
-            ws_out.row_dimensions[4].height = 32
+            ws_out.row_dimensions[current_row].height = 28
+            ws_out.row_dimensions[current_row+1].height = 32
+            current_row += 2
             
-            # Row 5: Separator
-            ws_out.merge_cells(start_row=5, start_column=1, end_row=5, end_column=num_cols)
-            sep_cell = ws_out.cell(row=5, column=1)
-            sep_cell.value = ""
-            sep_cell.fill = PatternFill(start_color=COLORS['primary'], end_color=COLORS['primary'], fill_type='solid')
-            ws_out.row_dimensions[5].height = 8
+            # === ROW 5: SEPARATOR ===
+            ws_out.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=num_cols)
+            cell = ws_out.cell(row=current_row, column=1)
+            cell.value = ""
+            cell.fill = PatternFill(start_color=COLORS['primary'], end_color=COLORS['primary'], fill_type='solid')
+            ws_out.row_dimensions[current_row].height = 8
+            current_row += 1
             
-            # Row 6: Column Headers
-            header_row = 6
+            # === ROW 6: HEADERS ===
+            header_row = current_row
             ws_out.row_dimensions[header_row].height = 32
             for c_idx, h_text in enumerate(headers, 1):
                 cell = ws_out.cell(row=header_row, column=c_idx)
@@ -390,50 +384,49 @@ if current_file:
                 cell.alignment = center_align
                 cell.border = thin_border
             
-            # Row 7: Filter info
-            ws_out.merge_cells(start_row=7, start_column=1, end_row=7, end_column=num_cols)
-            filter_cell = ws_out.cell(row=7, column=1)
-            filter_cell.value = "🔍 Filter: Vehicles with mileage between 20-24 hours | Developed by Muhammad Ashaan"
-            filter_cell.font = Font(name='Segoe UI', size=9, italic=True, color=COLORS['primary_dark'])
-            filter_cell.fill = PatternFill(start_color='EBF4FC', end_color='EBF4FC', fill_type='solid')
-            filter_cell.alignment = center_align
-            ws_out.row_dimensions[7].height = 24
+            current_row += 1
             
-            # Data rows start from row 8
-            curr_r = 8
+            # === ROW 7: FILTER INFO ===
+            ws_out.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=num_cols)
+            cell = ws_out.cell(row=current_row, column=1)
+            cell.value = "🔍 Filter: Vehicles with mileage between 20-24 hours | Developed by Muhammad Ashaan"
+            cell.font = Font(name='Segoe UI', size=9, italic=True, color=COLORS['primary_dark'])
+            cell.fill = PatternFill(start_color='EBF4FC', end_color='EBF4FC', fill_type='solid')
+            cell.alignment = center_align
+            ws_out.row_dimensions[current_row].height = 24
+            current_row += 1
+            
+            # === DATA ROWS ===
             sno_tracker = 1
+            actual_reg_col = c_reg_idx + (0 if has_sno else 1)
             
-            # Fill patterns
             fill_alt = PatternFill(start_color=COLORS['alt_row'], end_color=COLORS['alt_row'], fill_type='solid')
             fill_dup = PatternFill(start_color='FFF3E0', end_color='FFF3E0', fill_type='solid')
             fill_repeat = PatternFill(start_color='FFE5E5', end_color='FFE5E5', fill_type='solid')
             
-            actual_reg_col = c_reg_idx + (0 if has_sno else 1)
-
-            # --- URBAN FLEET SECTION ---
-            if len(urban_rows) > 0:
-                ws_out.merge_cells(start_row=curr_r, start_column=1, end_row=curr_r, end_column=num_cols)
-                u_sec = ws_out.cell(row=curr_r, column=1)
-                u_sec.value = f"🏙️ URBAN FLEET VEHICLES ({len(urban_rows)})"
-                u_sec.font = Font(name='Segoe UI', size=12, bold=True, color=COLORS['text_light'])
-                u_sec.fill = PatternFill(start_color=COLORS['primary'], end_color=COLORS['primary'], fill_type='solid')
-                u_sec.alignment = center_align
-                ws_out.row_dimensions[curr_r].height = 30
-                curr_r += 1
-
+            # --- URBAN FLEET ---
+            if urban_rows:
+                ws_out.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=num_cols)
+                cell = ws_out.cell(row=current_row, column=1)
+                cell.value = f"🏙️ URBAN FLEET VEHICLES ({len(urban_rows)})"
+                cell.font = Font(name='Segoe UI', size=12, bold=True, color=COLORS['text_light'])
+                cell.fill = PatternFill(start_color=COLORS['primary'], end_color=COLORS['primary'], fill_type='solid')
+                cell.alignment = center_align
+                ws_out.row_dimensions[current_row].height = 30
+                current_row += 1
+                
                 for r_data in urban_rows:
                     reg_val = str(r_data[actual_reg_col]).replace('\xa0', '').strip() if pd.notna(r_data[actual_reg_col]) else ''
                     reg_clean = reg_val.upper()
-                    is_even = (curr_r % 2 == 0)
+                    is_even = (current_row % 2 == 0)
                     
                     r_data[0] = sno_tracker
                     sno_tracker += 1
                     
-                    ws_out.row_dimensions[curr_r].height = 22
+                    ws_out.row_dimensions[current_row].height = 22
                     for c_idx, val in enumerate(r_data, 1):
-                        val_clean = str(val).replace('\xa0', '').strip() if pd.notna(val) else ''
-                        cell = ws_out.cell(row=curr_r, column=c_idx)
-                        cell.value = val_clean if c_idx > 1 else r_data[0]
+                        cell = ws_out.cell(row=current_row, column=c_idx)
+                        cell.value = val if c_idx > 1 else r_data[0]
                         cell.alignment = center_align
                         cell.border = thin_border
                         cell.font = Font(name='Segoe UI', size=10, color=COLORS['text_dark'])
@@ -448,34 +441,33 @@ if current_file:
                             elif reg_clean in duplicate_regs:
                                 cell.fill = fill_dup
                                 cell.font = Font(name='Segoe UI', size=10, bold=True, color='E65100')
-                    curr_r += 1
-
-                curr_r += 1
-
-            # --- RURAL FLEET SECTION ---
-            if len(rural_rows) > 0:
-                ws_out.merge_cells(start_row=curr_r, start_column=1, end_row=curr_r, end_column=num_cols)
-                r_sec = ws_out.cell(row=curr_r, column=1)
-                r_sec.value = f"🌾 RURAL FLEET VEHICLES ({len(rural_rows)})"
-                r_sec.font = Font(name='Segoe UI', size=12, bold=True, color=COLORS['text_light'])
-                r_sec.fill = PatternFill(start_color=COLORS['accent_green'], end_color=COLORS['accent_green'], fill_type='solid')
-                r_sec.alignment = center_align
-                ws_out.row_dimensions[curr_r].height = 30
-                curr_r += 1
-
+                    current_row += 1
+                
+                current_row += 1
+            
+            # --- RURAL FLEET ---
+            if rural_rows:
+                ws_out.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=num_cols)
+                cell = ws_out.cell(row=current_row, column=1)
+                cell.value = f"🌾 RURAL FLEET VEHICLES ({len(rural_rows)})"
+                cell.font = Font(name='Segoe UI', size=12, bold=True, color=COLORS['text_light'])
+                cell.fill = PatternFill(start_color=COLORS['accent_green'], end_color=COLORS['accent_green'], fill_type='solid')
+                cell.alignment = center_align
+                ws_out.row_dimensions[current_row].height = 30
+                current_row += 1
+                
                 for r_data in rural_rows:
                     reg_val = str(r_data[actual_reg_col]).replace('\xa0', '').strip() if pd.notna(r_data[actual_reg_col]) else ''
                     reg_clean = reg_val.upper()
-                    is_even = (curr_r % 2 == 0)
+                    is_even = (current_row % 2 == 0)
                     
                     r_data[0] = sno_tracker
                     sno_tracker += 1
                     
-                    ws_out.row_dimensions[curr_r].height = 22
+                    ws_out.row_dimensions[current_row].height = 22
                     for c_idx, val in enumerate(r_data, 1):
-                        val_clean = str(val).replace('\xa0', '').strip() if pd.notna(val) else ''
-                        cell = ws_out.cell(row=curr_r, column=c_idx)
-                        cell.value = val_clean if c_idx > 1 else r_data[0]
+                        cell = ws_out.cell(row=current_row, column=c_idx)
+                        cell.value = val if c_idx > 1 else r_data[0]
                         cell.alignment = center_align
                         cell.border = thin_border
                         cell.font = Font(name='Segoe UI', size=10, color=COLORS['text_dark'])
@@ -490,11 +482,20 @@ if current_file:
                             elif reg_clean in duplicate_regs:
                                 cell.fill = fill_dup
                                 cell.font = Font(name='Segoe UI', size=10, bold=True, color='E65100')
-                    curr_r += 1
-
-                curr_r += 1
-
-            # Auto Column Widths
+                    current_row += 1
+                
+                current_row += 1
+            
+            # === FOOTER ===
+            ws_out.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=num_cols)
+            cell = ws_out.cell(row=current_row, column=1)
+            cell.value = "📋 Report generated by Bellanix Tech - Mileage Executive Audit System"
+            cell.font = Font(name='Segoe UI', size=9, italic=True, color=COLORS['primary_light'])
+            cell.fill = PatternFill(start_color='EBF4FC', end_color='EBF4FC', fill_type='solid')
+            cell.alignment = center_align
+            ws_out.row_dimensions[current_row].height = 24
+            
+            # === AUTO COLUMN WIDTHS ===
             for col in ws_out.columns:
                 max_len = 0
                 for cell in col:
@@ -502,18 +503,8 @@ if current_file:
                         max_len = max(max_len, len(str(cell.value)))
                 col_letter = get_column_letter(col[0].column)
                 ws_out.column_dimensions[col_letter].width = max(max_len + 5, 15)
-
-            # Add footer with branding
-            footer_row = curr_r + 1
-            ws_out.merge_cells(start_row=footer_row, start_column=1, end_row=footer_row, end_column=num_cols)
-            footer_cell = ws_out.cell(row=footer_row, column=1)
-            footer_cell.value = "📋 Report generated by Bellanix Tech - Mileage Executive Audit System"
-            footer_cell.font = Font(name='Segoe UI', size=9, italic=True, color=COLORS['primary_light'])
-            footer_cell.fill = PatternFill(start_color='EBF4FC', end_color='EBF4FC', fill_type='solid')
-            footer_cell.alignment = center_align
-            ws_out.row_dimensions[footer_row].height = 24
-
-            # Download Output
+            
+            # === SAVE AND DOWNLOAD ===
             output_buffer = io.BytesIO()
             wb.save(output_buffer)
             output_buffer.seek(0)
@@ -525,7 +516,7 @@ if current_file:
                 file_name=f"{selected_city}_Mileage_Report_{meta_date.replace('/', '_')}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
-
+            
     except Exception as e:
-        st.error(f"Error processing report: {str(e)}")
+        st.error(f"❌ Error: {str(e)}")
         st.error("Please check your file format and try again.")
