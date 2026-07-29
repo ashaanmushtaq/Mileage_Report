@@ -10,7 +10,6 @@ from datetime import datetime
 # DEFAULT RURAL VEHICLE MASTER LIST (Permanent Storage)
 # ------------------------------------------------------------------------------
 DEFAULT_RURAL_LIST = [
-    # Aap ki Rural List ke tamam numbers/codes yahan direct master set me saved hain
     "R-1", "R-2", "R-3", "R-4", "R-5", "R-6", "R-7", "R-8", "R-9", "R-10",
     "RIC-1", "RIC-2", "RIC-3", "RIC-4", "RIC-5", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"
 ]
@@ -92,7 +91,7 @@ def is_rural_vehicle(reg_str, rural_set, numeric_rural_set):
 # ------------------------------------------------------------------------------
 mileage_file = st.file_uploader("📂 Upload Today's Mileage Report (.xlsx)", type=["xlsx"])
 
-with st.expander("⚙️ Optional: Update Rural Master List (Agra Aap change karna chahein)"):
+with st.expander("⚙️ Optional: Update Rural Master List (Agar Change Karna Ho)"):
     rural_file = st.file_uploader("Upload New Master List (.xlsx)", type=["xlsx"], key="rural_master")
 
 if mileage_file:
@@ -142,7 +141,7 @@ if mileage_file:
 
             raw_headers = df_mileage_raw.iloc[header_row_idx].astype(str).str.replace('\xa0', '', regex=False).str.strip().tolist()
             
-            # Check if S.No / Sr.# exists in headers, else prepare column list
+            # Check if S.No / Sr.# exists in headers
             has_sno = raw_headers[0].upper() in ['S.NO', 'SR.#', 'SR NO', 'S#', 'NO']
             headers = raw_headers if has_sno else ['S.No'] + raw_headers
 
@@ -168,7 +167,7 @@ if mileage_file:
                         
                         row_list = row.tolist()
                         if not has_sno:
-                            row_list = [''] + row_list # Placeholder for S.No
+                            row_list = [''] + row_list
                         
                         if is_rural_vehicle(reg_clean, rural_set, numeric_rural_set):
                             rural_rows.append(row_list)
@@ -246,7 +245,7 @@ if mileage_file:
                 cell.alignment = center_align
 
             curr_r = 8
-            global_sno = 1  # Sequential Counter for S.No (1, 2, 3...)
+            sno_tracker = 1  # Continuous Counter for S.No (1, 2, 3...)
             
             thin_border = Border(
                 left=Side(style='thin', color='D9D9D9'),
@@ -257,61 +256,77 @@ if mileage_file:
             fill_alt = PatternFill(start_color="F2F7FA", end_color="F2F7FA", fill_type="solid")
             fill_dup = PatternFill(start_color="FFE169", end_color="FFE169", fill_type="solid")
 
-            # Function to Write Rows with Perfect Alignment & Continuous S.No
-            def write_section(rows_data, section_title, section_color, start_r):
-                nonlocal global_sno
-                r_pos = start_r
-                
-                # Section Header Banner
-                ws_out.merge_cells(start_row=r_pos, start_column=1, end_row=r_pos, end_column=len(headers))
-                sec_cell = ws_out.cell(row=r_pos, column=1, value=f"{section_title} ({len(rows_data)})")
-                sec_cell.font = Font(bold=True, color="FFFFFF", size=11)
-                sec_cell.fill = PatternFill(start_color=section_color, end_color=section_color, fill_type="solid")
-                sec_cell.alignment = Alignment(horizontal="left", vertical="center", indent=1)
-                ws_out.row_dimensions[r_pos].height = 25
-                r_pos += 1
+            actual_reg_col = col_reg_idx + (0 if has_sno else 1)
 
-                actual_reg_col = col_reg_idx + (0 if has_sno else 1)
-
-                for r_data in rows_data:
-                    reg_val = str(r_data[actual_reg_col]).replace('\xa0', '').strip() if pd.notna(r_data[actual_reg_col]) else ''
-                    reg_clean = reg_val.upper()
-                    is_even = (r_pos % 2 == 0)
-                    
-                    # Force Continuous Serial Numbering
-                    r_data[0] = global_sno
-                    global_sno += 1
-                    
-                    ws_out.row_dimensions[r_pos].height = 20
-                    for c_idx, val in enumerate(r_data, 1):
-                        val_clean = str(val).replace('\xa0', '').strip() if pd.notna(val) else ''
-                        cell = ws_out.cell(row=r_pos, column=c_idx, value=val_clean if c_idx > 1 else r_data[0])
-                        
-                        # 100% CENTERED ALIGNMENT FOR ALL DATA
-                        cell.alignment = center_align
-                        cell.border = thin_border
-                        
-                        if is_even:
-                            cell.fill = fill_alt
-                        if c_idx == (actual_reg_col + 1) and reg_clean in duplicate_regs:
-                            cell.fill = fill_dup
-                            cell.font = Font(bold=True, color="9C5700")
-                    r_pos += 1
-                return r_pos
-
-            # Write Urban Fleet
-            curr_r = write_section(urban_rows, "URBAN FLEET VEHICLES", "154360", curr_r)
+            # --- WRITE URBAN FLEET ---
+            ws_out.merge_cells(start_row=curr_r, start_column=1, end_row=curr_r, end_column=len(headers))
+            u_sec = ws_out.cell(row=curr_r, column=1, value=f"URBAN FLEET VEHICLES ({len(urban_rows)})")
+            u_sec.font = Font(bold=True, color="FFFFFF", size=11)
+            u_sec.fill = PatternFill(start_color="154360", end_color="154360", fill_type="solid")
+            u_sec.alignment = Alignment(horizontal="left", vertical="center", indent=1)
+            ws_out.row_dimensions[curr_r].height = 25
             curr_r += 1
-            # Write Rural Fleet (S.No continues automatically)
-            curr_r = write_section(rural_rows, "RURAL FLEET VEHICLES", "145A32", curr_r)
 
-            # Auto Auto-fit Column Widths cleanly
+            for r_data in urban_rows:
+                reg_val = str(r_data[actual_reg_col]).replace('\xa0', '').strip() if pd.notna(r_data[actual_reg_col]) else ''
+                reg_clean = reg_val.upper()
+                is_even = (curr_r % 2 == 0)
+                
+                r_data[0] = sno_tracker
+                sno_tracker += 1
+                
+                ws_out.row_dimensions[curr_r].height = 20
+                for c_idx, val in enumerate(r_data, 1):
+                    val_clean = str(val).replace('\xa0', '').strip() if pd.notna(val) else ''
+                    cell = ws_out.cell(row=curr_r, column=c_idx, value=val_clean if c_idx > 1 else r_data[0])
+                    cell.alignment = center_align
+                    cell.border = thin_border
+                    if is_even:
+                        cell.fill = fill_alt
+                    if c_idx == (actual_reg_col + 1) and reg_clean in duplicate_regs:
+                        cell.fill = fill_dup
+                        cell.font = Font(bold=True, color="9C5700")
+                curr_r += 1
+
+            curr_r += 1
+
+            # --- WRITE RURAL FLEET (Continuous S.No) ---
+            ws_out.merge_cells(start_row=curr_r, start_column=1, end_row=curr_r, end_column=len(headers))
+            r_sec = ws_out.cell(row=curr_r, column=1, value=f"RURAL FLEET VEHICLES ({len(rural_rows)})")
+            r_sec.font = Font(bold=True, color="FFFFFF", size=11)
+            r_sec.fill = PatternFill(start_color="145A32", end_color="145A32", fill_type="solid")
+            r_sec.alignment = Alignment(horizontal="left", vertical="center", indent=1)
+            ws_out.row_dimensions[curr_r].height = 25
+            curr_r += 1
+
+            for r_data in rural_rows:
+                reg_val = str(r_data[actual_reg_col]).replace('\xa0', '').strip() if pd.notna(r_data[actual_reg_col]) else ''
+                reg_clean = reg_val.upper()
+                is_even = (curr_r % 2 == 0)
+                
+                r_data[0] = sno_tracker
+                sno_tracker += 1
+                
+                ws_out.row_dimensions[curr_r].height = 20
+                for c_idx, val in enumerate(r_data, 1):
+                    val_clean = str(val).replace('\xa0', '').strip() if pd.notna(val) else ''
+                    cell = ws_out.cell(row=curr_r, column=c_idx, value=val_clean if c_idx > 1 else r_data[0])
+                    cell.alignment = center_align
+                    cell.border = thin_border
+                    if is_even:
+                        cell.fill = fill_alt
+                    if c_idx == (actual_reg_col + 1) and reg_clean in duplicate_regs:
+                        cell.fill = fill_dup
+                        cell.font = Font(bold=True, color="9C5700")
+                curr_r += 1
+
+            # Auto Column Width Adjustment
             for col in ws_out.columns:
                 max_len = max(len(str(cell.value or '')) for cell in col)
                 col_letter = get_column_letter(col[0].column)
                 ws_out.column_dimensions[col_letter].width = max(max_len + 5, 14)
 
-            # Streamlit Download Button
+            # Download Button
             output_buffer = io.BytesIO()
             wb.save(output_buffer)
             output_buffer.seek(0)
