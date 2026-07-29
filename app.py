@@ -237,7 +237,7 @@ def generate_professional_excel(headers, urban_rows, rural_rows, selected_city, 
     
     # Row 4: Additional metadata
     ws.merge_cells(start_row=4, start_column=1, end_row=4, end_column=half_cols)
-    r4_left = ws.cell(row=4, column=1, value=f"👨‍💼 DEVELOPED BY:  Muhammad Ashaan")
+    r4_left = ws.cell(row=4, column=1, value=f"DEVELOPED BY:  Muhammad Ashaan")
     r4_left.font = Font(name='Calibri', size=10, italic=True, color=COLORS['primary_medium'])
     r4_left.alignment = center_align
     
