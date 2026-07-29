@@ -145,9 +145,11 @@ def process_mileage_df(df_raw):
     return header_row_idx, col_reg_idx, col_period_idx
 
 # ------------------------------------------------------------------------------
-# ENHANCED EXCEL REPORT GENERATOR WITH PROFESSIONAL THEME
+# ENHANCED EXCEL REPORT GENERATOR WITH PROFESSIONAL THEME & STATUS COLUMN
 # ------------------------------------------------------------------------------
-def generate_professional_excel(headers, urban_rows, rural_rows, selected_city, meta_date, total_valid_vehicles, repeated_vehicles, duplicate_regs, has_sno, c_reg_idx):
+def generate_professional_excel(headers, urban_rows, rural_rows, selected_city, meta_date, 
+                                total_valid_vehicles, repeated_vehicles, duplicate_regs, 
+                                has_sno, c_reg_idx, prev_vehicles):
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Executive Report"
@@ -155,7 +157,10 @@ def generate_professional_excel(headers, urban_rows, rural_rows, selected_city, 
     # Disable gridlines for cleaner look
     ws.sheet_view.showGridLines = False
     
-    num_cols = len(headers)
+    # Add STATUS column to headers
+    enhanced_headers = headers.copy()
+    enhanced_headers.append("STATUS")
+    num_cols = len(enhanced_headers)
     half_cols = max(2, num_cols // 2)
     
     # Define Professional Color Palette
@@ -173,6 +178,7 @@ def generate_professional_excel(headers, urban_rows, rural_rows, selected_city, 
         'text_light': 'FFFFFF',          # White Text
         'warning_bg': 'FFF3CD',          # Warning Background
         'repeat_bg': 'FFE5CC',           # Repeat Vehicle Background
+        'new_bg': 'D4EDDA',              # New Vehicle (Green)
         'alt_row': 'F8FAFC'              # Alternate Row
     }
     
@@ -237,7 +243,7 @@ def generate_professional_excel(headers, urban_rows, rural_rows, selected_city, 
     
     # Row 4: Additional metadata
     ws.merge_cells(start_row=4, start_column=1, end_row=4, end_column=half_cols)
-    r4_left = ws.cell(row=4, column=1, value=f"DEVELOPED BY:  Muhammad Ashaan")
+    r4_left = ws.cell(row=4, column=1, value=f"👨‍💼 DEVELOPED BY:  Muhammad Ashaan")
     r4_left.font = Font(name='Calibri', size=10, italic=True, color=COLORS['primary_medium'])
     r4_left.alignment = center_align
     
@@ -268,7 +274,7 @@ def generate_professional_excel(headers, urban_rows, rural_rows, selected_city, 
     # ==================== 3. COLUMN HEADERS ====================
     header_row = 8
     ws.row_dimensions[header_row].height = 32
-    for c_idx, h_text in enumerate(headers, 1):
+    for c_idx, h_text in enumerate(enhanced_headers, 1):
         cell = ws.cell(row=header_row, column=c_idx, value=h_text)
         cell.style = 'header_style'
     
@@ -276,6 +282,7 @@ def generate_professional_excel(headers, urban_rows, rural_rows, selected_city, 
     curr_row = 9
     sno_tracker = 1
     actual_reg_col = c_reg_idx + (0 if has_sno else 1)
+    status_col = len(enhanced_headers)  # Last column
     
     # Prepare fill patterns
     alt_fill = PatternFill(start_color=COLORS['alt_row'], end_color=COLORS['alt_row'], fill_type="solid")
@@ -283,6 +290,7 @@ def generate_professional_excel(headers, urban_rows, rural_rows, selected_city, 
     rural_bg_fill = PatternFill(start_color=COLORS['rural_bg'], end_color=COLORS['rural_bg'], fill_type="solid")
     warning_fill = PatternFill(start_color=COLORS['warning_bg'], end_color=COLORS['warning_bg'], fill_type="solid")
     repeat_fill = PatternFill(start_color=COLORS['repeat_bg'], end_color=COLORS['repeat_bg'], fill_type="solid")
+    new_fill = PatternFill(start_color=COLORS['new_bg'], end_color=COLORS['new_bg'], fill_type="solid")
     
     # ---- URBAN FLEET SECTION ----
     # Section header with gradient
@@ -294,19 +302,37 @@ def generate_professional_excel(headers, urban_rows, rural_rows, selected_city, 
     ws.row_dimensions[curr_row].height = 30
     curr_row += 1
     
-    # Urban data rows
+    # Urban data rows with status
     for idx, r_data in enumerate(urban_rows):
         reg_val = str(r_data[actual_reg_col]).replace('\xa0', '').strip() if pd.notna(r_data[actual_reg_col]) else ''
         reg_clean = reg_val.upper()
+        reg_norm = normalize_reg(reg_clean)
         is_alt = (idx % 2 == 1)
+        
+        # Determine status
+        if reg_norm in prev_vehicles:
+            status = "🔁 REPEATED"
+            status_fill = repeat_fill
+            status_font_color = 'B7410E'
+        elif reg_clean in duplicate_regs:
+            status = "⚠️ DUPLICATE"
+            status_fill = warning_fill
+            status_font_color = '9C5700'
+        else:
+            status = "✅ NEW"
+            status_fill = new_fill
+            status_font_color = '155724'
         
         r_data[0] = sno_tracker
         sno_tracker += 1
         
+        # Add status to row data
+        row_with_status = r_data + [status]
+        
         ws.row_dimensions[curr_row].height = 22
-        for c_idx, val in enumerate(r_data, 1):
+        for c_idx, val in enumerate(row_with_status, 1):
             val_clean = str(val).replace('\xa0', '').strip() if pd.notna(val) else ''
-            cell = ws.cell(row=curr_row, column=c_idx, value=val_clean if c_idx > 1 else r_data[0])
+            cell = ws.cell(row=curr_row, column=c_idx, value=val_clean if c_idx > 1 else row_with_status[0])
             cell.alignment = center_align
             cell.border = thin_border
             cell.font = Font(name='Calibri', size=10)
@@ -317,14 +343,16 @@ def generate_professional_excel(headers, urban_rows, rural_rows, selected_city, 
             else:
                 cell.fill = urban_bg_fill
             
-            # Highlight registration column
+            # Highlight registration column with status color
             if c_idx == (actual_reg_col + 1):
-                if reg_clean in repeated_vehicles:
-                    cell.fill = repeat_fill
-                    cell.font = Font(name='Calibri', size=10, bold=True, color='B7410E')
-                elif reg_clean in duplicate_regs:
-                    cell.fill = warning_fill
-                    cell.font = Font(name='Calibri', size=10, bold=True, color='9C5700')
+                if reg_norm in prev_vehicles or reg_clean in duplicate_regs:
+                    cell.font = Font(name='Calibri', size=10, bold=True, color=status_font_color)
+                    cell.fill = status_fill
+            
+            # Highlight status column
+            if c_idx == status_col:
+                cell.font = Font(name='Calibri', size=10, bold=True, color=status_font_color)
+                cell.fill = status_fill
         curr_row += 1
     
     curr_row += 1  # Spacer
@@ -338,19 +366,37 @@ def generate_professional_excel(headers, urban_rows, rural_rows, selected_city, 
     ws.row_dimensions[curr_row].height = 30
     curr_row += 1
     
-    # Rural data rows
+    # Rural data rows with status
     for idx, r_data in enumerate(rural_rows):
         reg_val = str(r_data[actual_reg_col]).replace('\xa0', '').strip() if pd.notna(r_data[actual_reg_col]) else ''
         reg_clean = reg_val.upper()
+        reg_norm = normalize_reg(reg_clean)
         is_alt = (idx % 2 == 1)
+        
+        # Determine status
+        if reg_norm in prev_vehicles:
+            status = "🔁 REPEATED"
+            status_fill = repeat_fill
+            status_font_color = 'B7410E'
+        elif reg_clean in duplicate_regs:
+            status = "⚠️ DUPLICATE"
+            status_fill = warning_fill
+            status_font_color = '9C5700'
+        else:
+            status = "✅ NEW"
+            status_fill = new_fill
+            status_font_color = '155724'
         
         r_data[0] = sno_tracker
         sno_tracker += 1
         
+        # Add status to row data
+        row_with_status = r_data + [status]
+        
         ws.row_dimensions[curr_row].height = 22
-        for c_idx, val in enumerate(r_data, 1):
+        for c_idx, val in enumerate(row_with_status, 1):
             val_clean = str(val).replace('\xa0', '').strip() if pd.notna(val) else ''
-            cell = ws.cell(row=curr_row, column=c_idx, value=val_clean if c_idx > 1 else r_data[0])
+            cell = ws.cell(row=curr_row, column=c_idx, value=val_clean if c_idx > 1 else row_with_status[0])
             cell.alignment = center_align
             cell.border = thin_border
             cell.font = Font(name='Calibri', size=10)
@@ -360,13 +406,16 @@ def generate_professional_excel(headers, urban_rows, rural_rows, selected_city, 
             else:
                 cell.fill = rural_bg_fill
             
+            # Highlight registration column with status color
             if c_idx == (actual_reg_col + 1):
-                if reg_clean in repeated_vehicles:
-                    cell.fill = repeat_fill
-                    cell.font = Font(name='Calibri', size=10, bold=True, color='B7410E')
-                elif reg_clean in duplicate_regs:
-                    cell.fill = warning_fill
-                    cell.font = Font(name='Calibri', size=10, bold=True, color='9C5700')
+                if reg_norm in prev_vehicles or reg_clean in duplicate_regs:
+                    cell.font = Font(name='Calibri', size=10, bold=True, color=status_font_color)
+                    cell.fill = status_fill
+            
+            # Highlight status column
+            if c_idx == status_col:
+                cell.font = Font(name='Calibri', size=10, bold=True, color=status_font_color)
+                cell.fill = status_fill
         curr_row += 1
     
     # ==================== 5. FOOTER WITH LEGEND ====================
@@ -381,30 +430,29 @@ def generate_professional_excel(headers, urban_rows, rural_rows, selected_city, 
     # ==================== 6. LEGEND SECTION ====================
     legend_row = footer_row + 2
     ws.merge_cells(start_row=legend_row, start_column=1, end_row=legend_row, end_column=num_cols)
-    legend_cell = ws.cell(row=legend_row, column=1, value="📌 LEGEND:")
-    legend_cell.font = Font(name='Calibri', size=10, bold=True, color=COLORS['primary_dark'])
+    legend_cell = ws.cell(row=legend_row, column=1, value="📌 STATUS LEGEND:")
+    legend_cell.font = Font(name='Calibri', size=11, bold=True, color=COLORS['primary_dark'])
     legend_cell.alignment = Alignment(horizontal='left', vertical='center')
     
-    # Legend items in next rows
+    # Legend items with status descriptions
     legend_items = [
-        ("🟡 Yellow Highlight", "Same-day duplicate vehicle", COLORS['warning_bg']),
-        ("🟠 Orange Highlight", "2-day consecutive 20-24h vehicle", COLORS['repeat_bg']),
-        ("🔵 Light Blue", "Urban fleet entry", COLORS['urban_bg']),
-        ("🟢 Light Green", "Rural fleet entry", COLORS['rural_bg'])
+        ("🔁 REPEATED", "Vehicle appeared in previous day's 20-24h report", COLORS['repeat_bg'], 'B7410E'),
+        ("✅ NEW", "New vehicle in today's 20-24h report", COLORS['new_bg'], '155724'),
+        ("⚠️ DUPLICATE", "Same vehicle appears multiple times today", COLORS['warning_bg'], '9C5700'),
+        ("🔵 Light Blue", "Urban fleet entry", COLORS['urban_bg'], '2C4A6E'),
+        ("🟢 Light Green", "Rural fleet entry", COLORS['rural_bg'], '1E7E34')
     ]
     
-    for i, (label, desc, color) in enumerate(legend_items):
+    for i, (label, desc, color, text_color) in enumerate(legend_items):
         row = legend_row + 1 + i
         ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=num_cols)
         
-        # Create a cell with color indicator
         legend_cell = ws.cell(row=row, column=1, value=f"  {label}:  {desc}")
-        legend_cell.font = Font(name='Calibri', size=9, color=COLORS['text_dark'])
+        legend_cell.font = Font(name='Calibri', size=9, color=text_color)
         legend_cell.alignment = Alignment(horizontal='left', vertical='center')
         
-        # Add a small colored block
-        if i < 4:
-            # Create a colored cell for visual indicator
+        # Add background color for visual indicator
+        if i < 5:
             color_cell = ws.cell(row=row, column=1)
             color_cell.fill = PatternFill(start_color=color.replace('#', ''), end_color=color.replace('#', ''), fill_type="solid")
     
@@ -420,6 +468,10 @@ def generate_professional_excel(headers, urban_rows, rural_rows, selected_city, 
                     pass
         # Set width with some padding
         ws.column_dimensions[col_letter].width = min(max(max_len + 6, 14), 35)
+    
+    # Set STATUS column width a bit wider
+    status_col_letter = get_column_letter(status_col)
+    ws.column_dimensions[status_col_letter].width = 18
     
     # Freeze top rows for better viewing
     ws.freeze_panes = 'A9'
@@ -543,22 +595,27 @@ if current_file:
             st.markdown("### 📊 Audit Summary")
             st.info(f"📍 Selected Location: **{selected_city}** | 📅 File Data Date: **{meta_date}**")
             
-            m1, m2, m3, m4 = st.columns(4)
+            # Show status breakdown
+            repeated_count = len(repeated_vehicles)
+            new_count = total_valid_vehicles - repeated_count - len(duplicate_regs)
+            
+            m1, m2, m3, m4, m5 = st.columns(5)
             m1.metric("Total Filtered (20–24h)", total_valid_vehicles)
             m2.metric("Urban Fleet", len(urban_rows))
             m3.metric("Rural Fleet", len(rural_rows))
-            m4.metric("Repeated 2-Day Vehicles", len(repeated_vehicles))
+            m4.metric("🔄 Repeated", repeated_count)
+            m5.metric("✅ New", new_count if new_count > 0 else 0)
 
             if repeated_vehicles:
-                st.info(f"🔁 **2-Day Consecutive 20–24h Repeat Vehicles ({len(repeated_vehicles)}):** {', '.join(repeated_vehicles)}")
+                st.info(f"🔁 **Repeated Vehicles ({len(repeated_vehicles)}):** {', '.join(repeated_vehicles)}")
             if duplicate_regs:
-                st.warning(f"⚠️ **Same-Day Duplicates ({len(duplicate_regs)}):** {', '.join(duplicate_regs)}")
+                st.warning(f"⚠️ **Duplicate Vehicles ({len(duplicate_regs)}):** {', '.join(duplicate_regs)}")
 
-            # Generate Professional Excel Report
+            # Generate Professional Excel Report with Status
             wb = generate_professional_excel(
                 headers, urban_rows, rural_rows, selected_city, 
                 meta_date, total_valid_vehicles, repeated_vehicles, 
-                duplicate_regs, has_sno, c_reg_idx
+                duplicate_regs, has_sno, c_reg_idx, prev_vehicles
             )
             
             # Save to buffer
