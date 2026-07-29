@@ -159,8 +159,10 @@ def generate_report_png(selected_city, meta_date, total_valid, urban_rows, rural
     # Title Block
     plt.text(0.5, 0.93, f"{selected_city} VEHICLE MILEAGE EXECUTIVE REPORT", 
              fontsize=16, fontweight='bold', ha='center', va='center', color='#1A365D')
+             
+    # FIXED HERE: Changed italic=True to fontstyle='italic'
     plt.text(0.5, 0.88, f"Report Date: {meta_date}  |  Developed by: Muhammad Ashaan", 
-             fontsize=10, italic=True, ha='center', va='center', color='#4A8CC4')
+             fontsize=10, fontstyle='italic', ha='center', va='center', color='#4A8CC4')
 
     # Metric Cards
     metrics = [
