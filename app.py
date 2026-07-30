@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import openpyxl
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side, GradientFill, NamedStyle
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side, GradientFill, NamedStyle, Protection
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.dimensions import ColumnDimension
 import io
@@ -12,14 +12,18 @@ from datetime import datetime
 # DEFAULT RURAL VEHICLE MASTER LIST
 # ------------------------------------------------------------------------------
 DEFAULT_RURAL_LIST = [
-    "GAB-4046", "SA-6766", "STR-6637", "MC-5", "TT-06", "GTD-694", 
-    "GAS-1694", "BN-3932", "DGK-1763", "TT-11", "GAU-8135", "GAJ-19-47", 
-    "SAA-2946", "ST-663", "GAJ-3943", "TT-05", "OKA-2192", "SAA-7988",
-    "R-1", "R-2", "R-3", "R-4", "R-5", "R-6", "R-7", "R-8", "R-9", "R-10",
-    "R-11", "R-12", "R-13", "R-14", "R-15", "R-16", "R-17", "R-18", "R-19",
-    "R-21", "R-23", "R-24", "R-32", "R-33", "R-35", "R-40", "R-41",
-    "RIC-20", "RIC-22", "RIC-25", "RIC-26", "RIC-27", "RIC-28", "RIC-29",
-    "RIC-30", "RIC-31", "RIC-34", "RIC-36", "RIC-37", "RIC-38", "RIC-39",
+    # Trolly / Other Vehicles (17)
+    "GAB-4046", "SA-6766", "STR-6637", "TT-06", "GTD-694", "GAS-1694",
+    "BN-3932", "DGK-1763", "TT-11", "GAU-8135", "GAJ-19-47", "SAA-2946",
+    "ST-663", "GAJ-3943", "TT-05", "OKA-2192", "SAA-7988",
+    
+    # R Series Rickshaws (21)
+    "R-1", "R-2", "R-3", "R-4", "R-5", "R-6", "R-7", "R-8", "R-9", 
+    "R-11", "R-12", "R-13", "R-14", "R-15", "R-16", "R-17", "R-23", 
+    "R-32", "R-33", "R-35", "R-41",
+    
+    # RIC Series Rickshaws (9)
+    "RIC-26", "RIC-28", "RIC-31", "RIC-34", "RIC-37", "RIC-39", 
     "RIC-42", "RIC-43", "RIC-44"
 ]
 
@@ -148,8 +152,8 @@ def process_mileage_df(df_raw):
 # ENHANCED EXCEL REPORT GENERATOR WITH PROFESSIONAL THEME & STATUS COLUMN
 # ------------------------------------------------------------------------------
 def generate_professional_excel(headers, urban_rows, rural_rows, selected_city, meta_date, 
-                                total_valid_vehicles, repeated_vehicles, duplicate_regs, 
-                                has_sno, c_reg_idx, prev_vehicles):
+                                 total_valid_vehicles, repeated_vehicles, duplicate_regs, 
+                                 has_sno, c_reg_idx, prev_vehicles):
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Executive Report"
@@ -175,7 +179,7 @@ def generate_professional_excel(headers, urban_rows, rural_rows, selected_city, 
         'rural_bg': 'E8F5E9',           # Light Green for Rural
         'border_color': 'D0D7E6',       # Soft Border
         'text_dark': '1A2332',          # Dark Text
-        'text_light': 'FFFFFF',          # White Text
+        'text_light': 'FFFFFF',         # White Text
         'warning_bg': 'FFF3CD',          # Warning Background
         'repeat_bg': 'FFE5CC',           # Repeat Vehicle Background
         'new_bg': 'D4EDDA',              # New Vehicle (Green)
@@ -241,10 +245,10 @@ def generate_professional_excel(headers, urban_rows, rural_rows, selected_city, 
     r3_right.fill = PatternFill(start_color=COLORS['header_bg'], end_color=COLORS['header_bg'], fill_type="solid")
     ws.row_dimensions[3].height = 28
     
-    # Row 4: Additional metadata
+    # Row 4: Additional metadata with Single Clean Icon & Lock Focus
     ws.merge_cells(start_row=4, start_column=1, end_row=4, end_column=half_cols)
-    r4_left = ws.cell(row=4, column=1, value=f"👨‍💼 DEVELOPED BY:  Muhammad Ashaan")
-    r4_left.font = Font(name='Calibri', size=10, italic=True, color=COLORS['primary_medium'])
+    r4_left = ws.cell(row=4, column=1, value="💻 DEVELOPED BY:  Muhammad Ashaan")
+    r4_left.font = Font(name='Calibri', size=10, bold=True, color=COLORS['primary_medium'])
     r4_left.alignment = center_align
     
     ws.merge_cells(start_row=4, start_column=half_cols+1, end_row=4, end_column=num_cols)
@@ -293,7 +297,6 @@ def generate_professional_excel(headers, urban_rows, rural_rows, selected_city, 
     new_fill = PatternFill(start_color=COLORS['new_bg'], end_color=COLORS['new_bg'], fill_type="solid")
     
     # ---- URBAN FLEET SECTION ----
-    # Section header with gradient
     ws.merge_cells(start_row=curr_row, start_column=1, end_row=curr_row, end_column=num_cols)
     u_sec = ws.cell(row=curr_row, column=1, value=f"  🏙️  URBAN FLEET VEHICLES  ({len(urban_rows)})")
     u_sec.font = Font(name='Calibri', size=13, bold=True, color=COLORS['text_light'])
@@ -418,10 +421,10 @@ def generate_professional_excel(headers, urban_rows, rural_rows, selected_city, 
                 cell.fill = status_fill
         curr_row += 1
     
-    # ==================== 5. FOOTER WITH LEGEND ====================
+    # ==================== 5. FOOTER WITH DYNAMIC TIME ====================
     footer_row = curr_row + 2
     ws.merge_cells(start_row=footer_row, start_column=1, end_row=footer_row, end_column=num_cols)
-    footer_text = f"Generated on: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}  |  © 2026 Bellanix Tech  |  All Rights Reserved"
+    footer_text = f"Generated on: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}"
     footer_cell = ws.cell(row=footer_row, column=1, value=footer_text)
     footer_cell.font = Font(name='Calibri', size=9, italic=True, color='6B7A8F')
     footer_cell.alignment = Alignment(horizontal='center', vertical='center')
@@ -451,30 +454,38 @@ def generate_professional_excel(headers, urban_rows, rural_rows, selected_city, 
         legend_cell.font = Font(name='Calibri', size=9, color=text_color)
         legend_cell.alignment = Alignment(horizontal='left', vertical='center')
         
-        # Add background color for visual indicator
         if i < 5:
             color_cell = ws.cell(row=row, column=1)
             color_cell.fill = PatternFill(start_color=color.replace('#', ''), end_color=color.replace('#', ''), fill_type="solid")
     
-    # ==================== 7. AUTO FIT COLUMNS ====================
+    # ==================== 7. AUTO FIT COLUMNS & FIX S.NO WIDTH ====================
     for col in ws.columns:
         max_len = 0
         col_letter = get_column_letter(col[0].column)
+        
+        # Force S.No (Column A) width to exactly 10
+        if col_letter == 'A':
+            ws.column_dimensions['A'].width = 10
+            continue
+            
         for cell in col:
             if cell.value:
                 try:
                     max_len = max(max_len, len(str(cell.value)))
                 except:
                     pass
-        # Set width with some padding
         ws.column_dimensions[col_letter].width = min(max(max_len + 6, 14), 35)
     
-    # Set STATUS column width a bit wider
+    # Set STATUS column width
     status_col_letter = get_column_letter(status_col)
     ws.column_dimensions[status_col_letter].width = 18
     
     # Freeze top rows for better viewing
     ws.freeze_panes = 'A9'
+    
+    # Enable Sheet Protection so header info and layout remain locked/read-only
+    ws.protection.sheet = True
+    ws.protection.password = 'Ashaan2026'
     
     return wb
 
