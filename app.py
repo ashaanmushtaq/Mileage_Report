@@ -8,59 +8,60 @@ from openpyxl.styles import Alignment, Border, Font, NamedStyle, PatternFill, Si
 from openpyxl.utils import get_column_letter
 
 # ------------------------------------------------------------------------------
-# DEFAULT RURAL VEHICLE MASTER LIST
+# NEW UPDATED RURAL VEHICLE MASTER LIST
 # ------------------------------------------------------------------------------
 DEFAULT_RURAL_LIST = [
-    # Trolly / Other Vehicles (17)
-    "GAB-4046",
-    "SA-6766",
-    "STR-6637",
-    "TT-06",
-    "GTD-694",
-    "GAS-1694",
-    "BN-3932",
-    "DGK-1763",
-    "TT-11",
-    "GAU-8135",
-    "GAJ-19-47",
-    "SAA-2946",
-    "ST-663",
-    "GAJ-3943",
-    "TT-05",
-    "OKA-2192",
-    "SAA-7988",
-    # R Series Rickshaws (21)
-    "R-1",
+    # --- Rural Loader Rickshaws ---
     "R-2",
-    "R-3",
-    "R-4",
-    "R-5",
-    "R-6",
-    "R-7",
-    "R-8",
-    "R-9",
-    "R-11",
-    "R-12",
-    "R-13",
-    "R-14",
-    "R-15",
-    "R-16",
-    "R-17",
-    "R-23",
-    "R-32",
-    "R-33",
-    "R-35",
     "R-41",
-    # RIC Series Rickshaws (9)
-    "RIC-26",
-    "RIC-28",
-    "RIC-31",
-    "RIC-34",
-    "RIC-37",
+    "R-6",
+    "R-33",
+    "R-7",
     "RIC-39",
-    "RIC-42",
+    "R-9",
+    "R-16",
+    "R-5",
     "RIC-43",
+    "R-4",
     "RIC-44",
+    "R-3",
+    "RIC-28",
+    "R-8",
+    "R-32",
+    "R-15",
+    "RIC-34",
+    "R-14",
+    "RIC-31",
+    "R-13",
+    "RIC-42",
+    "R-17",
+    "R-35",
+    "R-12",
+    "RIC-37",
+    "R-11",
+    "RIC-26",
+    "R-1",
+    "R-23",
+    # --- Tractor Trolleys (TT) ---
+    "SAA-7988",
+    "STO-5923",
+    "OKA-2192",
+    "GAJ-3943",
+    "STR-6637",
+    "GAU-8135",
+    "TT-07",
+    "AKA-3026",
+    "GTD-694",
+    "BN-3932",
+    "GAB-4046",
+    "TT-09",
+    # --- Mini Ex ---
+    "MINIEX-D55",
+    # --- Loaders ---
+    "GBA-936",
+    "TL-1005",
+    # --- Blade ---
+    "TB-780",
 ]
 
 st.set_page_config(
@@ -200,7 +201,7 @@ def process_mileage_df(df_raw):
 
 
 # ------------------------------------------------------------------------------
-# ENHANCED EXCEL REPORT GENERATOR
+# EXCEL REPORT GENERATOR
 # ------------------------------------------------------------------------------
 def generate_professional_excel(
     headers,
@@ -282,7 +283,7 @@ def generate_professional_excel(
       bottom=Side(style="thin", color=COLORS["border_color"]),
   )
 
-  # 1. Title
+  # 1. Title Header
   ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=num_cols)
   title_cell = ws.cell(
       row=1,
@@ -292,7 +293,7 @@ def generate_professional_excel(
   title_cell.style = "title_style"
   ws.row_dimensions[1].height = 45
 
-  # 2. Subtitle Lines
+  # 2. Meta Info
   ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=num_cols)
   sep_cell = ws.cell(row=2, column=1)
   sep_cell.fill = PatternFill(
@@ -335,7 +336,7 @@ def generate_professional_excel(
   )
   ws.row_dimensions[3].height = 28
 
-  # DEVELOPED BY CELL (LOCKED)
+  # DEVELOPED BY CELL
   ws.merge_cells(
       start_row=4, start_column=1, end_row=4, end_column=half_cols
   )
@@ -392,7 +393,7 @@ def generate_professional_excel(
     cell = ws.cell(row=header_row, column=c_idx, value=h_text)
     cell.style = "header_style"
 
-  # 4. Rows
+  # 4. Rows Population
   curr_row = 9
   sno_tracker = 1
   actual_reg_col = c_reg_idx + (0 if has_sno else 1)
@@ -429,7 +430,7 @@ def generate_professional_excel(
       fill_type="solid",
   )
 
-  # Urban Section (Only display if Urban rows exist)
+  # Urban Fleet Rows (If present)
   if len(urban_rows) > 0:
     ws.merge_cells(
         start_row=curr_row,
@@ -511,7 +512,7 @@ def generate_professional_excel(
 
     curr_row += 1
 
-  # Rural Section (Always Displayed)
+  # Rural Fleet Rows
   if len(rural_rows) > 0:
     ws.merge_cells(
         start_row=curr_row,
@@ -589,7 +590,7 @@ def generate_professional_excel(
           cell.fill = status_fill
       curr_row += 1
 
-  # Legend Section (TIMESTAMP ROW REMOVED, LEGEND IS BACK)
+  # Status Legend Section
   legend_row = curr_row + 2
   ws.merge_cells(
       start_row=legend_row, start_column=1, end_row=legend_row, end_column=num_cols
@@ -619,18 +620,8 @@ def generate_professional_excel(
           COLORS["warning_bg"],
           "9C5700",
       ),
-      (
-          "🔵 Light Blue",
-          "Urban fleet entry",
-          COLORS["urban_bg"],
-          "2C4A6E",
-      ),
-      (
-          "🟢 Light Green",
-          "Rural fleet entry",
-          COLORS["rural_bg"],
-          "1E7E34",
-      ),
+      ("🔵 Light Blue", "Urban fleet entry", COLORS["urban_bg"], "2C4A6E"),
+      ("🟢 Light Green", "Rural fleet entry", COLORS["rural_bg"], "1E7E34"),
   ]
 
   for i, (label, desc, color, text_color) in enumerate(legend_items):
@@ -649,7 +640,7 @@ def generate_professional_excel(
           fill_type="solid",
       )
 
-  # Column Sizing
+  # Auto Column Widths
   for col in ws.columns:
     max_len = 0
     col_letter = get_column_letter(col[0].column)
@@ -671,7 +662,7 @@ def generate_professional_excel(
 
   ws.freeze_panes = "A9"
 
-  # CELL UNLOCKING & SPECIFIC LOCKING FOR "DEVELOPED BY"
+  # Cell Protection Settings
   max_report_row = legend_row + len(legend_items) + 2
   for row in ws.iter_rows(
       min_row=1, max_row=max_report_row, min_col=1, max_col=num_cols
@@ -679,7 +670,7 @@ def generate_professional_excel(
     for cell in row:
       cell.protection = openpyxl.styles.Protection(locked=False)
 
-  # Lock only DEVELOPED BY cell
+  # Lock Developer Info Cell
   for c in range(1, half_cols + 1):
     ws.cell(row=4, column=c).protection = openpyxl.styles.Protection(
         locked=True
@@ -692,7 +683,7 @@ def generate_professional_excel(
 
 
 # ------------------------------------------------------------------------------
-# STREAMLIT UI & MAIN LOGIC
+# STREAMLIT UI & LOGIC
 # ------------------------------------------------------------------------------
 st.markdown("### 📍 City & File Selection")
 
@@ -738,7 +729,7 @@ if current_file:
           " Mileage Report."
       )
     else:
-      # STRICT NORMALIZED RURAL SET BUILDING
+      # Build Normalized Master List Set
       normalized_rural_set = {
           normalize_reg(x) for x in DEFAULT_RURAL_LIST if normalize_reg(x)
       }
@@ -752,7 +743,7 @@ if current_file:
             if val_str and val_str not in ["TROLLY NO.", "UC NO."]:
               normalized_rural_set.add(normalize_reg(val_str))
 
-      # Previous File Checking
+      # Parse Previous File Data
       prev_vehicles = set()
       if previous_file:
         df_prev_raw = pd.read_excel(previous_file, header=None)
@@ -824,11 +815,11 @@ if current_file:
             if not has_sno:
               row_list = [""] + row_list
 
-            # NOWSHERA VIRKAN CONDITION: Everything goes to RURAL
+            # NOWSHERA VIRKAN CONDITION: Everything goes to Rural
             if is_nowshera:
               rural_rows.append(row_list)
             else:
-              # STRICT MATCHING CHECK FOR OTHER CITIES
+              # DEFAULT STRICT CHECK
               if is_rural_vehicle(reg_clean, normalized_rural_set):
                 rural_rows.append(row_list)
               else:
@@ -837,7 +828,7 @@ if current_file:
       duplicate_regs = {k for k, v in reg_counts.items() if v > 1}
       total_valid_vehicles = len(urban_rows) + len(rural_rows)
 
-      # Summary Metrics
+      # Summary Dashboard
       st.markdown("### 📊 Audit Summary")
       st.info(
           f"📍 Selected Location: **{selected_city}** | 📅 File Data Date:"
@@ -865,7 +856,7 @@ if current_file:
             f" {', '.join(duplicate_regs)}"
         )
 
-      # Generate Report
+      # Excel Generation
       wb = generate_professional_excel(
           headers,
           urban_rows,
