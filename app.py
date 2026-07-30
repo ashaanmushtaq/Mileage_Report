@@ -335,7 +335,7 @@ def generate_professional_excel(
   )
   ws.row_dimensions[3].height = 28
 
-  # DEVELOPED BY CELL (THIS WILL BE LOCKED)
+  # DEVELOPED BY CELL (LOCKED)
   ws.merge_cells(
       start_row=4, start_column=1, end_row=4, end_column=half_cols
   )
@@ -429,157 +429,225 @@ def generate_professional_excel(
       fill_type="solid",
   )
 
-  # Urban Section
-  ws.merge_cells(
-      start_row=curr_row, start_column=1, end_row=curr_row, end_column=num_cols
-  )
-  u_sec = ws.cell(
-      row=curr_row,
-      column=1,
-      value=f"  🏙️  URBAN FLEET VEHICLES  ({len(urban_rows)})",
-  )
-  u_sec.font = Font(
-      name="Calibri", size=13, bold=True, color=COLORS["text_light"]
-  )
-  u_sec.fill = PatternFill(
-      start_color=COLORS["primary_medium"],
-      end_color=COLORS["primary_medium"],
-      fill_type="solid",
-  )
-  u_sec.alignment = Alignment(horizontal="center", vertical="center")
-  ws.row_dimensions[curr_row].height = 30
-  curr_row += 1
-
-  for idx, r_data in enumerate(urban_rows):
-    reg_val = (
-        str(r_data[actual_reg_col]).replace("\xa0", "").strip()
-        if pd.notna(r_data[actual_reg_col])
-        else ""
+  # Urban Section (Only display if Urban rows exist)
+  if len(urban_rows) > 0:
+    ws.merge_cells(
+        start_row=curr_row,
+        start_column=1,
+        end_row=curr_row,
+        end_column=num_cols,
     )
-    reg_clean = reg_val.upper()
-    reg_norm = normalize_reg(reg_clean)
-    is_alt = idx % 2 == 1
+    u_sec = ws.cell(
+        row=curr_row,
+        column=1,
+        value=f"  🏙️  URBAN FLEET VEHICLES  ({len(urban_rows)})",
+    )
+    u_sec.font = Font(
+        name="Calibri", size=13, bold=True, color=COLORS["text_light"]
+    )
+    u_sec.fill = PatternFill(
+        start_color=COLORS["primary_medium"],
+        end_color=COLORS["primary_medium"],
+        fill_type="solid",
+    )
+    u_sec.alignment = Alignment(horizontal="center", vertical="center")
+    ws.row_dimensions[curr_row].height = 30
+    curr_row += 1
 
-    if reg_norm in prev_vehicles:
-      status = "🔁 REPEATED"
-      status_fill = repeat_fill
-      status_font_color = "B7410E"
-    elif reg_clean in duplicate_regs:
-      status = "⚠️ DUPLICATE"
-      status_fill = warning_fill
-      status_font_color = "9C5700"
-    else:
-      status = "✅ NEW"
-      status_fill = new_fill
-      status_font_color = "155724"
-
-    r_data[0] = sno_tracker
-    sno_tracker += 1
-    row_with_status = r_data + [status]
-
-    ws.row_dimensions[curr_row].height = 22
-    for c_idx, val in enumerate(row_with_status, 1):
-      val_clean = str(val).replace("\xa0", "").strip() if pd.notna(val) else ""
-      cell = ws.cell(
-          row=curr_row,
-          column=c_idx,
-          value=val_clean if c_idx > 1 else row_with_status[0],
+    for idx, r_data in enumerate(urban_rows):
+      reg_val = (
+          str(r_data[actual_reg_col]).replace("\xa0", "").strip()
+          if pd.notna(r_data[actual_reg_col])
+          else ""
       )
-      cell.alignment = center_align
-      cell.border = thin_border
-      cell.font = Font(name="Calibri", size=10)
+      reg_clean = reg_val.upper()
+      reg_norm = normalize_reg(reg_clean)
+      is_alt = idx % 2 == 1
 
-      cell.fill = alt_fill if is_alt else urban_bg_fill
+      if reg_norm in prev_vehicles:
+        status = "🔁 REPEATED"
+        status_fill = repeat_fill
+        status_font_color = "B7410E"
+      elif reg_clean in duplicate_regs:
+        status = "⚠️ DUPLICATE"
+        status_fill = warning_fill
+        status_font_color = "9C5700"
+      else:
+        status = "✅ NEW"
+        status_fill = new_fill
+        status_font_color = "155724"
 
-      if c_idx == (actual_reg_col + 1):
-        if reg_norm in prev_vehicles or reg_clean in duplicate_regs:
+      r_data[0] = sno_tracker
+      sno_tracker += 1
+      row_with_status = r_data + [status]
+
+      ws.row_dimensions[curr_row].height = 22
+      for c_idx, val in enumerate(row_with_status, 1):
+        val_clean = str(val).replace("\xa0", "").strip() if pd.notna(val) else ""
+        cell = ws.cell(
+            row=curr_row,
+            column=c_idx,
+            value=val_clean if c_idx > 1 else row_with_status[0],
+        )
+        cell.alignment = center_align
+        cell.border = thin_border
+        cell.font = Font(name="Calibri", size=10)
+
+        cell.fill = alt_fill if is_alt else urban_bg_fill
+
+        if c_idx == (actual_reg_col + 1):
+          if reg_norm in prev_vehicles or reg_clean in duplicate_regs:
+            cell.font = Font(
+                name="Calibri", size=10, bold=True, color=status_font_color
+            )
+            cell.fill = status_fill
+
+        if c_idx == status_col:
           cell.font = Font(
               name="Calibri", size=10, bold=True, color=status_font_color
           )
           cell.fill = status_fill
+      curr_row += 1
 
-      if c_idx == status_col:
-        cell.font = Font(
-            name="Calibri", size=10, bold=True, color=status_font_color
-        )
-        cell.fill = status_fill
     curr_row += 1
 
-  curr_row += 1
-
-  # Rural Section
-  ws.merge_cells(
-      start_row=curr_row, start_column=1, end_row=curr_row, end_column=num_cols
-  )
-  r_sec = ws.cell(
-      row=curr_row,
-      column=1,
-      value=f"  🌾  RURAL FLEET VEHICLES  ({len(rural_rows)})",
-  )
-  r_sec.font = Font(
-      name="Calibri", size=13, bold=True, color=COLORS["text_light"]
-  )
-  r_sec.fill = PatternFill(
-      start_color="1E7E34", end_color="1E7E34", fill_type="solid"
-  )
-  r_sec.alignment = Alignment(horizontal="center", vertical="center")
-  ws.row_dimensions[curr_row].height = 30
-  curr_row += 1
-
-  for idx, r_data in enumerate(rural_rows):
-    reg_val = (
-        str(r_data[actual_reg_col]).replace("\xa0", "").strip()
-        if pd.notna(r_data[actual_reg_col])
-        else ""
+  # Rural Section (Always Displayed)
+  if len(rural_rows) > 0:
+    ws.merge_cells(
+        start_row=curr_row,
+        start_column=1,
+        end_row=curr_row,
+        end_column=num_cols,
     )
-    reg_clean = reg_val.upper()
-    reg_norm = normalize_reg(reg_clean)
-    is_alt = idx % 2 == 1
+    r_sec = ws.cell(
+        row=curr_row,
+        column=1,
+        value=f"  🌾  RURAL FLEET VEHICLES  ({len(rural_rows)})",
+    )
+    r_sec.font = Font(
+        name="Calibri", size=13, bold=True, color=COLORS["text_light"]
+    )
+    r_sec.fill = PatternFill(
+        start_color="1E7E34", end_color="1E7E34", fill_type="solid"
+    )
+    r_sec.alignment = Alignment(horizontal="center", vertical="center")
+    ws.row_dimensions[curr_row].height = 30
+    curr_row += 1
 
-    if reg_norm in prev_vehicles:
-      status = "🔁 REPEATED"
-      status_fill = repeat_fill
-      status_font_color = "B7410E"
-    elif reg_clean in duplicate_regs:
-      status = "⚠️ DUPLICATE"
-      status_fill = warning_fill
-      status_font_color = "9C5700"
-    else:
-      status = "✅ NEW"
-      status_fill = new_fill
-      status_font_color = "155724"
-
-    r_data[0] = sno_tracker
-    sno_tracker += 1
-    row_with_status = r_data + [status]
-
-    ws.row_dimensions[curr_row].height = 22
-    for c_idx, val in enumerate(row_with_status, 1):
-      val_clean = str(val).replace("\xa0", "").strip() if pd.notna(val) else ""
-      cell = ws.cell(
-          row=curr_row,
-          column=c_idx,
-          value=val_clean if c_idx > 1 else row_with_status[0],
+    for idx, r_data in enumerate(rural_rows):
+      reg_val = (
+          str(r_data[actual_reg_col]).replace("\xa0", "").strip()
+          if pd.notna(r_data[actual_reg_col])
+          else ""
       )
-      cell.alignment = center_align
-      cell.border = thin_border
-      cell.font = Font(name="Calibri", size=10)
+      reg_clean = reg_val.upper()
+      reg_norm = normalize_reg(reg_clean)
+      is_alt = idx % 2 == 1
 
-      cell.fill = alt_fill if is_alt else rural_bg_fill
+      if reg_norm in prev_vehicles:
+        status = "🔁 REPEATED"
+        status_fill = repeat_fill
+        status_font_color = "B7410E"
+      elif reg_clean in duplicate_regs:
+        status = "⚠️ DUPLICATE"
+        status_fill = warning_fill
+        status_font_color = "9C5700"
+      else:
+        status = "✅ NEW"
+        status_fill = new_fill
+        status_font_color = "155724"
 
-      if c_idx == (actual_reg_col + 1):
-        if reg_norm in prev_vehicles or reg_clean in duplicate_regs:
+      r_data[0] = sno_tracker
+      sno_tracker += 1
+      row_with_status = r_data + [status]
+
+      ws.row_dimensions[curr_row].height = 22
+      for c_idx, val in enumerate(row_with_status, 1):
+        val_clean = str(val).replace("\xa0", "").strip() if pd.notna(val) else ""
+        cell = ws.cell(
+            row=curr_row,
+            column=c_idx,
+            value=val_clean if c_idx > 1 else row_with_status[0],
+        )
+        cell.alignment = center_align
+        cell.border = thin_border
+        cell.font = Font(name="Calibri", size=10)
+
+        cell.fill = alt_fill if is_alt else rural_bg_fill
+
+        if c_idx == (actual_reg_col + 1):
+          if reg_norm in prev_vehicles or reg_clean in duplicate_regs:
+            cell.font = Font(
+                name="Calibri", size=10, bold=True, color=status_font_color
+            )
+            cell.fill = status_fill
+
+        if c_idx == status_col:
           cell.font = Font(
               name="Calibri", size=10, bold=True, color=status_font_color
           )
           cell.fill = status_fill
+      curr_row += 1
 
-      if c_idx == status_col:
-        cell.font = Font(
-            name="Calibri", size=10, bold=True, color=status_font_color
-        )
-        cell.fill = status_fill
-    curr_row += 1
+  # Legend Section (TIMESTAMP ROW REMOVED, LEGEND IS BACK)
+  legend_row = curr_row + 2
+  ws.merge_cells(
+      start_row=legend_row, start_column=1, end_row=legend_row, end_column=num_cols
+  )
+  legend_cell = ws.cell(row=legend_row, column=1, value="📌 STATUS LEGEND:")
+  legend_cell.font = Font(
+      name="Calibri", size=11, bold=True, color=COLORS["primary_dark"]
+  )
+  legend_cell.alignment = Alignment(horizontal="left", vertical="center")
+
+  legend_items = [
+      (
+          "🔁 REPEATED",
+          "Vehicle appeared in previous day's 20-24h report",
+          COLORS["repeat_bg"],
+          "B7410E",
+      ),
+      (
+          "✅ NEW",
+          "New vehicle in today's 20-24h report",
+          COLORS["new_bg"],
+          "155724",
+      ),
+      (
+          "⚠️ DUPLICATE",
+          "Same vehicle appears multiple times today",
+          COLORS["warning_bg"],
+          "9C5700",
+      ),
+      (
+          "🔵 Light Blue",
+          "Urban fleet entry",
+          COLORS["urban_bg"],
+          "2C4A6E",
+      ),
+      (
+          "🟢 Light Green",
+          "Rural fleet entry",
+          COLORS["rural_bg"],
+          "1E7E34",
+      ),
+  ]
+
+  for i, (label, desc, color, text_color) in enumerate(legend_items):
+    row = legend_row + 1 + i
+    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=num_cols)
+
+    legend_cell = ws.cell(row=row, column=1, value=f"  {label}:  {desc}")
+    legend_cell.font = Font(name="Calibri", size=9, color=text_color)
+    legend_cell.alignment = Alignment(horizontal="left", vertical="center")
+
+    if i < 5:
+      color_cell = ws.cell(row=row, column=1)
+      color_cell.fill = PatternFill(
+          start_color=color.replace("#", ""),
+          end_color=color.replace("#", ""),
+          fill_type="solid",
+      )
 
   # Column Sizing
   for col in ws.columns:
@@ -603,23 +671,20 @@ def generate_professional_excel(
 
   ws.freeze_panes = "A9"
 
-  # --------------------------------------------------------------------------
-  # CELL LOCKING SYSTEM FIX
-  # --------------------------------------------------------------------------
-  # Sab cells ko pehle explicit UNLOCK karo
+  # CELL UNLOCKING & SPECIFIC LOCKING FOR "DEVELOPED BY"
+  max_report_row = legend_row + len(legend_items) + 2
   for row in ws.iter_rows(
-      min_row=1, max_row=curr_row + 5, min_col=1, max_col=num_cols
+      min_row=1, max_row=max_report_row, min_col=1, max_col=num_cols
   ):
     for cell in row:
       cell.protection = openpyxl.styles.Protection(locked=False)
 
-  # SIRF "DEVELOPED BY" VALE CELLS KO LOCK KARO (Row 4, Columns 1 to half_cols)
+  # Lock only DEVELOPED BY cell
   for c in range(1, half_cols + 1):
     ws.cell(row=4, column=c).protection = openpyxl.styles.Protection(
         locked=True
     )
 
-  # Sheet Protection Enable (Password: Ashaan2026)
   ws.protection.sheet = True
   ws.protection.password = "Ashaan2026"
 
@@ -728,6 +793,8 @@ if current_file:
       missing_reg_rows = []
       repeated_vehicles = set()
 
+      is_nowshera = selected_city == "NOWSHERA VIRKAN"
+
       for idx, row in df_data.iterrows():
         period_val = row.iloc[c_per_idx]
         hrs = parse_period_to_hours(period_val)
@@ -757,11 +824,15 @@ if current_file:
             if not has_sno:
               row_list = [""] + row_list
 
-            # STRICT MATCHING CHECK
-            if is_rural_vehicle(reg_clean, normalized_rural_set):
+            # NOWSHERA VIRKAN CONDITION: Everything goes to RURAL
+            if is_nowshera:
               rural_rows.append(row_list)
             else:
-              urban_rows.append(row_list)
+              # STRICT MATCHING CHECK FOR OTHER CITIES
+              if is_rural_vehicle(reg_clean, normalized_rural_set):
+                rural_rows.append(row_list)
+              else:
+                urban_rows.append(row_list)
 
       duplicate_regs = {k for k, v in reg_counts.items() if v > 1}
       total_valid_vehicles = len(urban_rows) + len(rural_rows)
